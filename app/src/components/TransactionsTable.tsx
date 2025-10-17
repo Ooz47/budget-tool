@@ -1,79 +1,104 @@
-// import { Tx } from "../types";
 import { useEffect, useState } from "react";
 import api from "../api";
 
 type Tx = {
   id: string;
   bank: string;
+  accountIban?: string | null;
   dateOperation: string;
+  dateValeur?: string | null;
   label: string;
   details?: string | null;
   debit: number;
   credit: number;
   amount: number;
   yearMonth: string;
+  sourceFile: string;
+  categoryId?: string | null;
 };
 
-export default function TransactionsTable() {
+type Props = {
+  year: string;
+  month: string;
+};
+
+export default function TransactionsTable({ year, month }: Props) {
   const [rows, setRows] = useState<Tx[]>([]);
-  const [month, setMonth] = useState("2025-09");
-  const [bank, setBank] = useState("SG");
-  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.get("/transactions", { params: { month, bank, search } })
-      .then(r => {
-              console.log("API /transactions =>", r.data);
+    setLoading(true);
+    api
+      .get<Tx[]>("/transactions", { params: { year, month } })
+      .then((r) => {
         const arr = Array.isArray(r.data) ? r.data : [];
-        setRows(arr.map((x:any) => ({
-          id: String(x.id),
-          bank: String(x.bank ?? ""),
-          dateOperation: String(x.dateOperation ?? "").slice(0,10),
-          label: String(x.label ?? ""),
-          details: x.details ?? null,
-          debit: Number(x.debit ?? 0),
-          credit: Number(x.credit ?? 0),
-          amount: Number(x.amount ?? 0),
-          yearMonth: String(x.yearMonth ?? ""),
-        })));
+        setRows(
+          arr.map((x) => ({
+            ...x,
+            debit: Number(x.debit ?? 0),
+            credit: Number(x.credit ?? 0),
+            amount: Number(x.amount ?? 0),
+          }))
+        );
       })
-      .catch(() => setRows([]));
-  }, [month, bank, search]);
+      .catch((err) => {
+        console.error("Erreur API /transactions :", err);
+        setRows([]);
+      })
+      .finally(() => setLoading(false));
+  }, [year, month]);
 
+  if (loading) return <div>Chargement des transactions...</div>;
 
   return (
-    <div>
-      <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-        <input value={month} onChange={e=>setMonth(e.target.value)} placeholder="YYYY-MM" />
-        <input value={bank} onChange={e=>setBank(e.target.value)} placeholder="Bank" />
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher libellé..." />
-      </div>
-      <table width="100%" cellPadding={6} style={{ borderCollapse:"collapse" }}>
+    <div style={{ marginTop: 12 }}>
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          fontSize: "0.9rem",
+        }}
+      >
         <thead>
-          <tr>
-            <th>Date</th><th>Libellé</th><th>Détails</th><th>Débit</th><th>Crédit</th><th>Montant</th>
+          <tr style={{ borderBottom: "2px solid #ddd" }}>
+            <th style={{ textAlign: "left" }}>Date</th>
+            <th style={{ textAlign: "left" }}>Libellé</th>
+            <th style={{ textAlign: "left" }}>Détails</th>
+            <th style={{ textAlign: "right" }}>Débit</th>
+            <th style={{ textAlign: "right" }}>Crédit</th>
+            <th style={{ textAlign: "right" }}>Solde</th>
           </tr>
         </thead>
-       <tbody>
-  {rows.length===0 && (
-    <tr><td colSpan={6} style={{ padding:12, color:"#6b7280" }}>
-      Aucune transaction pour ce filtre.
-    </td></tr>
-  )}
-  {rows.map(r=>(
-    <tr key={r.id} style={{ borderTop:"1px solid #ddd" }}>
-      <td>{r.dateOperation}</td>
-      <td>{r.label}</td>
-      <td>{r.details ?? ""}</td>
-      <td style={{ textAlign:"right" }}>{r.debit.toFixed(2)}</td>
-      <td style={{ textAlign:"right" }}>{r.credit.toFixed(2)}</td>
-      <td style={{ textAlign:"right", color: r.amount<0 ? "#dc2626" : "#16a34a" }}>
-        {r.amount.toFixed(2)}
-      </td>
-    </tr>
-  ))}
-</tbody>
-
+        <tbody>
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={6} style={{ textAlign: "center", padding: 8, color: "#666" }}>
+                Aucune transaction trouvée pour cette période.
+              </td>
+            </tr>
+          )}
+          {rows.map((r) => (
+            <tr key={r.id} style={{ borderBottom: "1px solid #eee" }}>
+              <td>{r.dateOperation?.slice(0, 10)}</td>
+              <td>{r.label}</td>
+              <td>{r.details ?? ""}</td>
+              <td style={{ textAlign: "right" }}>
+                {r.debit ? r.debit.toFixed(2) : ""}
+              </td>
+              <td style={{ textAlign: "right" }}>
+                {r.credit ? r.credit.toFixed(2) : ""}
+              </td>
+              <td
+                style={{
+                  textAlign: "right",
+                  color: r.amount < 0 ? "#dc2626" : "#16a34a",
+                }}
+              >
+                {r.amount.toFixed(2)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
       </table>
     </div>
   );

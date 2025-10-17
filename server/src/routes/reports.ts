@@ -1,37 +1,71 @@
 import { FastifyInstance } from "fastify";
 
 export async function reportsRoutes(app: FastifyInstance) {
-  // Agrégations mensuelles par catégorie et totaux (catégorie ignorée pour l’instant)
-  app.get("/reports/monthly", async (req) => {
-    const { year } = (req.query as any) ?? {};
-    const yearPrefix = year ? `${year}-` : "";
-    // groupement par yearMonth
-    const rows = await app.prisma.transaction.groupBy({
-      by: ["yearMonth"],
-      _sum: { debit: true, credit: true, amount: true },
-      where: year ? { yearMonth: { startsWith: yearPrefix } } : undefined,
-      orderBy: { yearMonth: "asc" }
-    });
-    return rows.map(r => ({
-      month: r.yearMonth,
-      debit: r._sum.debit ?? 0,
-      credit: r._sum.credit ?? 0,
-      balance: r._sum.amount ?? 0
-    }));
+
+  app.get("/reports/monthly", async (req, reply) => {
+    try {
+      const { year, month } = (req.query as any) ?? {};
+
+      if (year && month) {
+        // exemple 2025-02
+        const ym = `${year}-${month.padStart(2, "0")}`;
+        const agg = await app.prisma.transaction.aggregate({
+          where: { yearMonth: ym },
+          _sum: { debit: true, credit: true, amount: true },
+        });
+        return [
+          {
+            month: ym,
+            debit: agg._sum.debit ?? 0,
+            credit: agg._sum.credit ?? 0,
+            balance: agg._sum.amount ?? 0,
+          },
+        ];
+      }
+
+      const where = year ? { yearMonth: { startsWith: `${year}-` } } : {};
+      const rows = await app.prisma.transaction.groupBy({
+        by: ["yearMonth"],
+        where,
+        _sum: { debit: true, credit: true, amount: true },
+        orderBy: { yearMonth: "asc" },
+      });
+
+      return rows.map((r) => ({
+        month: r.yearMonth,
+        debit: r._sum.debit ?? 0,
+        credit: r._sum.credit ?? 0,
+        balance: r._sum.amount ?? 0,
+      }));
+    } catch (e: any) {
+      reply.code(500).send({ error: e.message });
+    }
   });
 
-  // Agrégations annuelles (un total)
-  app.get("/reports/annual", async () => {
-    const rows = await app.prisma.transaction.groupBy({
-      by: ["yearMonth"],
-      _sum: { debit: true, credit: true, amount: true }
+  app.get("/reports/summary", async (req, reply) => {
+  try {
+    const { year, month } = (req.query as any) ?? {};
+
+    const where: any = {};
+    if (year && month) {
+      where.yearMonth = `${year}-${month.padStart(2, "0")}`;
+    } else if (year) {
+      where.yearMonth = { startsWith: `${year}-` };
+    }
+
+    const agg = await app.prisma.transaction.aggregate({
+      where,
+      _sum: { debit: true, credit: true, amount: true },
     });
-    const total = rows.reduce((acc, r) => {
-      acc.debit += r._sum.debit ?? 0;
-      acc.credit += r._sum.credit ?? 0;
-      acc.balance += r._sum.amount ?? 0;
-      return acc;
-    }, { debit: 0, credit: 0, balance: 0 });
-    return total;
-  });
+
+    const debit = agg._sum.debit ?? 0;
+    const credit = agg._sum.credit ?? 0;
+    const balance = agg._sum.amount ?? 0;
+
+    return { debit, credit, balance };
+  } catch (e: any) {
+    reply.code(500).send({ error: e.message });
+  }
+});
+
 }
