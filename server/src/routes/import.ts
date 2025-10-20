@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import axios from "axios";
 import FormData from "form-data";
 import { makeFingerprint } from "../services/fingerprint";
+import { detectTypeAndEntity } from "../services/transaction-analyzer";
 
 export async function importRoutes(app: FastifyInstance) {
   app.post("/import/sg-csv", async (req: any, reply) => {
@@ -57,21 +58,27 @@ export async function importRoutes(app: FastifyInstance) {
             details: data.details,
             accountIban: data.accountIban,
           });
+const { typeOperation, entity } = detectTypeAndEntity(
+  `${data.label} ${data.details ?? ""}`
+);
 
-          const res = await tx.transaction.upsert({
-            where: { fingerprint },
-            create: { ...data, fingerprint },
-            update: {
-              dateValeur: data.dateValeur,
-              label: data.label,
-              details: data.details,
-              debit: data.debit,
-              credit: data.credit,
-              amount: data.amount,
-              yearMonth: data.yearMonth,
-              sourceFile: data.sourceFile,
-            },
-          });
+const res = await tx.transaction.upsert({
+  where: { fingerprint },
+  create: { ...data, fingerprint, typeOperation, entity },
+  update: {
+    dateValeur: data.dateValeur,
+    label: data.label,
+    details: data.details,
+    debit: data.debit,
+    credit: data.credit,
+    amount: data.amount,
+    yearMonth: data.yearMonth,
+    sourceFile: data.sourceFile,
+    typeOperation,
+    entity,
+  },
+});
+
 
           if (res.createdAt.getTime() === res.updatedAt.getTime()) inserted++;
           else updated++;

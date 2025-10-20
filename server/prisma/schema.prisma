@@ -31,6 +31,8 @@ model Transaction {
   fingerprint   String   @unique     // <--- NEW
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  typeOperation String?   // ex: "PRLV", "PAIEMENT CB", "VIREMENT", "CHEQUE"
+  entity        String?   // ex: "ORANGE", "AMAZON", "EDF"
 }
 
 model Category {
