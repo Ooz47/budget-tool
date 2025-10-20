@@ -17,7 +17,9 @@ type Tx = {
   sourceFile: string;
   categoryId?: string | null;
   typeOperation?: string | null;
-  entity?: string | null;
+entityId?: string | null;
+entity?: { id: string; name: string } | null;
+
 };
 
 type Props = {
@@ -79,7 +81,7 @@ export default function TransactionsTable({ year, month }: Props) {
         r.label?.toLowerCase().includes(q) ||
         r.details?.toLowerCase().includes(q) ||
         r.typeOperation?.toLowerCase().includes(q) ||
-        r.entity?.toLowerCase().includes(q);
+        r.entity?.name?.toLowerCase().includes(q);
 
       const matchesType =
         filterType.length === 0 ||
@@ -87,7 +89,7 @@ export default function TransactionsTable({ year, month }: Props) {
 
       const matchesEntity =
         filterEntity.length === 0 ||
-        filterEntity.includes(r.entity ?? "");
+        filterEntity.includes(r.entity?.name ?? "");
 
       const matchesAmount =
         (filterMin === "" || r.amount >= Number(filterMin)) &&
@@ -151,7 +153,7 @@ export default function TransactionsTable({ year, month }: Props) {
   ];
 
   const entityOptions = Array.from(
-    new Set(rows.map((r) => r.entity).filter(Boolean))
+    new Set(rows.map((r) => r.entity?.name).filter(Boolean))
   )
     .sort((a, b) => (a ?? "").localeCompare(b ?? "")) // ✅ sécurisé
     .map((ent) => ({ value: ent!, label: ent! }));
@@ -367,7 +369,7 @@ export default function TransactionsTable({ year, month }: Props) {
                 <td>{r.label}</td>
                 <td style={{ color: "#555" }}>{r.details ?? ""}</td>
                 <td>{r.typeOperation ?? ""}</td>
-                <td>{r.entity ?? "-"}</td>
+                <td>{r.entity?.name ?? "-"}</td>
                 <td
                   style={{
                     textAlign: "right",

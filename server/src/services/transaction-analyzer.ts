@@ -1,20 +1,15 @@
 /**
  * 🔍 Détecte le type d'opération et l'entité associée
  * à partir du libellé brut d'une transaction SG.
- *
- * @param label Libellé de la transaction
- * @returns { typeOperation, entity }
  */
 export function detectTypeAndEntity(
   label: string
 ): { typeOperation: string; entity: string | null } {
-
-  // --- Normalisation du texte ---
   const l = (label || "")
     .toUpperCase()
-    .normalize("NFD") // supprime les accents
+    .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
-    .replace(/\s+/g, " "); // espaces multiples → un seul
+    .replace(/\s+/g, " ");
 
   // -------------------------------
   // 🧩 1️⃣ DÉTERMINATION DU TYPE
@@ -30,7 +25,14 @@ export function detectTypeAndEntity(
     l.includes("PERM")
   ) {
     typeOperation = "VIREMENT";
-  } else if (l.includes("FRAIS PAIEMENT") || l.includes("PAIEMENT HORS ZONE") || l.includes("OPTION TRANQUILLIT") || l.includes("COTISATION JAZZ")  || l.includes("INTERETS DEBITEURS")  || l.includes("ARRETE") ) {
+  } else if (
+    l.includes("FRAIS PAIEMENT") ||
+    l.includes("PAIEMENT HORS ZONE") ||
+    l.includes("OPTION TRANQUILLIT") ||
+    l.includes("COTISATION JAZZ") ||
+    l.includes("INTERETS DEBITEURS") ||
+    l.includes("ARRETE")
+  ) {
     typeOperation = "AUTRE (FRAIS BANCAIRES)";
   } else if (l.includes("CARTE") && !l.includes("RETRAIT DAB")) {
     typeOperation = "PAIEMENT CB";
@@ -50,67 +52,44 @@ export function detectTypeAndEntity(
 
   // 💸 Cas 2 : VIREMENTS
   if (typeOperation === "VIREMENT") {
-    // VIREMENTS REÇUS
     if (/VIR\s+(RECU|INST\s+RE)/.test(l)) {
       const match = l.match(/DE[:\s]+([A-Z0-9\s\.\'\-]+?)(?=\s+(DATE|MOTIF|REF|ID|EUR|$)|$)/);
       if (match && match[1]) entity = match[1].trim();
-    }
-    // VIREMENTS ÉMIS
-    else if (/VIR\s+(INSTANTANE|EUROPEEN|PERM)/.test(l) && /POUR[:\s]+/i.test(l)) {
+    } else if (/VIR\s+(INSTANTANE|EUROPEEN|PERM)/.test(l) && /POUR[:\s]+/i.test(l)) {
       const match = l.match(/POUR[:\s]+([A-Z0-9\s\.\'\-]+?)(?=\s+(BQ|CPT|REF|DATE|$))/);
       if (match && match[1]) entity = match[1].trim();
-    }
-    // Cas spécial "LOGITEL"
-    else if (/LOGITEL/.test(l) && /POUR[:\s]+/i.test(l)) {
+    } else if (/LOGITEL/.test(l) && /POUR[:\s]+/i.test(l)) {
       const match = l.match(/POUR[:\s]+([A-Z0-9\s\.\'\-]+?)(?=\s+(BQ|CPT|DATE|$))/);
       if (match && match[1]) entity = match[1].trim();
     }
   }
 
-// 🛍 Cas 3 : Paiements CB — extraction du commerçant
-if (typeOperation === "PAIEMENT CB") {
-  // Nettoie les doublons "CARTE X#### dd/dd"
-  const cleaned = l.replace(/(?:CARTE\s+X\d{4}\s+\d{2}\/\d{2}\s*){1,}/g, "CARTE ");
-
-  // Recherche du commerçant juste après "CARTE"
-  const match = cleaned.match(/CARTE\s+([A-Z0-9\*\.\'\-\s]+?)(?=\s+\d{2,}|USD|EUR|COMMERCE|IOPD|ILID|$)/);
-
-  if (match && match[1]) {
-    entity = match[1]
-      .trim()
-      .replace(/\s{2,}/g, " ")
-      .replace(/^(\*|\-)+/, "")
-      .replace(/\.$/, "")
-      .trim();
+  // 🛍 Cas 3 : Paiements CB — extraction du commerçant
+  if (typeOperation === "PAIEMENT CB") {
+    const cleaned = l.replace(/(?:CARTE\s+X\d{4}\s+\d{2}\/\d{2}\s*){1,}/g, "CARTE ");
+    const match = cleaned.match(/CARTE\s+([A-Z0-9\*\.\'\-\s]+?)(?=\s+\d{2,}|USD|EUR|COMMERCE|IOPD|ILID|$)/);
+    if (match && match[1]) {
+      entity = match[1]
+        .trim()
+        .replace(/\s{2,}/g, " ")
+        .replace(/^(\*|\-)+/, "")
+        .replace(/\.$/, "")
+        .trim();
+    }
   }
-}
-
-  // // --- Fallbacks pour cas particuliers
-  // if (!entity) {
-  //   if (cleaned.includes("KOALA.SH")) entity = "KOALA.SH";
-  //   else if (cleaned.includes("OPENAI")) entity = "OPENAI *ChatGPT";
-  //   else if (cleaned.includes("MIDJOURNEY")) entity = "MIDJOURNEY INC.";
-  // }
-
-
-
-
 
   // 🧾 Cas 4 : Prélèvements automatiques
   if (typeOperation === "PRLV") {
-    // "POUR CPTE DE:" → bénéficiaire
     if (/POUR\s+CPTE\s+DE[:\s]+/i.test(l)) {
       const match = l.match(/POUR\s+CPTE\s+DE[:\s]+([A-Z0-9\s\.\'\-]+?)(?=\s+(ID|MOTIF|ICS|REF|EUR|$))/);
       if (match && match[1]) entity = match[1].trim();
-    }
-    // "DE:" → émetteur
-    else if (/DE[:\s]+/i.test(l)) {
+    } else if (/DE[:\s]+/i.test(l)) {
       const match = l.match(/DE[:\s]+([A-Z0-9\s\.\'\-]+?)(?=\s+(ID|MOTIF|ICS|REF|EUR|$))/);
       if (match && match[1]) entity = match[1].trim();
     }
   }
 
-  // 🏦 Cas 5 : Frais bancaires & produits SG
+  // 🏦 Cas 5 : Frais bancaires
   if (typeOperation.startsWith("AUTRE")) {
     if (/FRAIS\s+PAIEMENT\s+HORS\s+ZONE\s+EURO/.test(l))
       entity = "Frais paiement international";
@@ -148,8 +127,8 @@ if (typeOperation === "PAIEMENT CB") {
       META: "Meta (Facebook)",
       NETFLIX: "Netflix",
       O2SWITCH: "O2SWITCH.FR",
-      KOALA: "KOALA.SH"
-        };
+      KOALA: "KOALA.SH",
+    };
     for (const key of Object.keys(knownEntities)) {
       if (l.includes(key)) {
         entity = knownEntities[key];
@@ -158,7 +137,7 @@ if (typeOperation === "PAIEMENT CB") {
     }
   }
 
-  // 🧩 Cas 7 : Fallback générique “DE: …”
+  // 🧩 Cas 7 : Fallback générique
   if (!entity) {
     const genericDe = l.match(/DE[:\s]+([A-Z0-9\s\-]+?)(?=\s(MOTIF|REF|ID|EUR|FR|IOPD|$))/);
     if (genericDe && genericDe[1]) {
@@ -172,45 +151,14 @@ if (typeOperation === "PAIEMENT CB") {
   // -------------------------------
   if (entity) {
     entity = entity
-      .replace(/\b\d{2}\s\d{2}\b/g, "") // supprime motifs date “08 09”
-      .replace(/\b\d{4,}\b/g, "") // supprime séquences numériques longues
-      .replace(/\bM(R|\.|ONSIEUR)?\s+ET\s+MME(\.|\b)?/gi, "") // retire “MR ET MME”
-      .replace(/\b(M(\.)?|MME(\.)?|MLE(\.)?|MONSIEUR|MADAME|MR|MM)\b[\s\u00A0]*/gi, "") // retire civilités
-      .replace(/\s{2,}/g, " ") // espaces multiples
-      .replace(/^[-–\.]+/, "") // tirets ou points en début
+      .replace(/\b\d{2}\s\d{2}\b/g, "")
+      .replace(/\b\d{4,}\b/g, "")
+      .replace(/\bM(R|\.|ONSIEUR)?\s+ET\s+MME(\.|\b)?/gi, "")
+      .replace(/\b(M(\.)?|MME(\.)?|MLE(\.)?|MONSIEUR|MADAME|MR|MM)\b[\s\u00A0]*/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .replace(/^[-–\.]+/, "")
       .trim();
   }
-
-// 🧹 Normalisation douce des entités connues
-if (entity) {
-  const normalized = entity
-    .replace(/\s{2,}/g, " ")
-    .trim()
-    .toUpperCase();
-
-  const normalizeMap: Record<string, string> = {
-    // Assurances
-    "ALPTIS ASSURANCES ALPTIS ASSURANCES": "ALPTIS ASSURANCES",
-
-    // Impôts / Trésor
-    "IMPOT PAS": "DGFIP (Prélèvement à la source)",
-
-    // Énergie / télécoms
-    "ORANGE SA": "ORANGE",
-
-    // Essence
-    "TOTAL LA JAILLE": "TOTAL",
-
-    // Plateformes
-
-  };
-
-  const found = Object.keys(normalizeMap).find((key) =>
-    normalized.includes(key)
-  );
-  if (found) entity = normalizeMap[found];
-}
-
 
   return { typeOperation, entity };
 }

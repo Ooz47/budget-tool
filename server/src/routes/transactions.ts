@@ -12,6 +12,7 @@ app.get("/transactions", async (req, reply) => {
 
     const rows = await app.prisma.transaction.findMany({
       where,
+      include: { entity: true },
       orderBy: [{ dateOperation: "asc" }],
     });
 

@@ -7,7 +7,6 @@ import { detectTypeAndEntity } from "../services/transaction-analyzer";
 export async function importRoutes(app: FastifyInstance) {
   app.post("/import/sg-csv", async (req: any, reply) => {
     try {
-      // Avec attachFieldsToBody: true, le fichier est ici
       const file = req.body?.file;
       if (!file || typeof file.toBuffer !== "function") {
         app.log.error({ bodyKeys: Object.keys(req.body || {}) }, "No file in body");
@@ -18,7 +17,6 @@ export async function importRoutes(app: FastifyInstance) {
       const filename = file?.filename || "sg.csv";
       const mimetype = file?.mimetype || "text/csv";
 
-      // Forward vers le parser Python
       const fd = new FormData();
       fd.append("file", buf, { filename, contentType: mimetype });
 
@@ -32,7 +30,8 @@ export async function importRoutes(app: FastifyInstance) {
       const rows = Array.isArray(resp.data?.transactions) ? resp.data.transactions : [];
       if (!rows.length) return { imported: 0, updated: 0, skipped: 0, file: filename };
 
-      let inserted = 0, updated = 0, skipped = 0;
+      let inserted = 0, updated = 0;
+
       await app.prisma.$transaction(async (tx) => {
         for (const r of rows) {
           const data = {
@@ -58,34 +57,45 @@ export async function importRoutes(app: FastifyInstance) {
             details: data.details,
             accountIban: data.accountIban,
           });
-const { typeOperation, entity } = detectTypeAndEntity(
-  `${data.label} ${data.details ?? ""}`
-);
 
-const res = await tx.transaction.upsert({
-  where: { fingerprint },
-  create: { ...data, fingerprint, typeOperation, entity },
-  update: {
-    dateValeur: data.dateValeur,
-    label: data.label,
-    details: data.details,
-    debit: data.debit,
-    credit: data.credit,
-    amount: data.amount,
-    yearMonth: data.yearMonth,
-    sourceFile: data.sourceFile,
-    typeOperation,
-    entity,
-  },
-});
+          const { typeOperation, entity } = detectTypeAndEntity(
+            `${data.label} ${data.details ?? ""}`
+          );
 
+          let entityId: string | null = null;
+          if (entity) {
+            const existing = await tx.entity.findUnique({ where: { name: entity } });
+            if (existing) {
+              entityId = existing.id;
+            } else {
+              const created = await tx.entity.create({ data: { name: entity } });
+              entityId = created.id;
+            }
+          }
+
+          const res = await tx.transaction.upsert({
+            where: { fingerprint },
+            create: { ...data, fingerprint, typeOperation, entityId },
+            update: {
+              dateValeur: data.dateValeur,
+              label: data.label,
+              details: data.details,
+              debit: data.debit,
+              credit: data.credit,
+              amount: data.amount,
+              yearMonth: data.yearMonth,
+              sourceFile: data.sourceFile,
+              typeOperation,
+              entityId,
+            },
+          });
 
           if (res.createdAt.getTime() === res.updatedAt.getTime()) inserted++;
           else updated++;
         }
       });
 
-      return { imported: inserted, updated, skipped, file: rows[0].sourceFile };
+      return { imported: inserted, updated, file: rows[0].sourceFile };
     } catch (e: any) {
       req.log.error({ msg: "Import failed", err: e?.message, stack: e?.stack });
       return reply.code(500).send({ error: "Import failed", message: e?.message ?? null });

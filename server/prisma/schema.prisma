@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma/client"
@@ -15,28 +9,62 @@ datasource db {
 }
 
 model Transaction {
-  id            String  @id @default(uuid())
+  id            String   @id @default(uuid())
   bank          String
   accountIban   String?
   dateOperation DateTime
   dateValeur    DateTime?
   label         String
   details       String?
-  debit         Float   @default(0)
-  credit        Float   @default(0)
-  amount        Float   // convention: credit - debit
-  yearMonth     String  // "YYYY-MM"
+  debit         Float    @default(0)
+  credit        Float    @default(0)
+  amount        Float
+  yearMonth     String
   sourceFile    String
   categoryId    String?
-  fingerprint   String   @unique     // <--- NEW
+  fingerprint   String   @unique
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  typeOperation String?   // ex: "PRLV", "PAIEMENT CB", "VIREMENT", "CHEQUE"
-  entity        String?   // ex: "ORANGE", "AMAZON", "EDF"
+  typeOperation String?
+  entityId      String?
+  entity        Entity?  @relation(fields: [entityId], references: [id])
 }
 
 model Category {
-  id    String  @id @default(uuid())
-  name  String  @unique
-  color String?
+  id          String   @id @default(uuid())
+  name        String   @unique
+  color       String?
+  icon        String?
+  description String?
+  entities    Entity[]
+}
+
+model Tag {
+  id        String      @id @default(uuid())
+  name      String      @unique
+  color     String?
+  entities  EntityTag[]
+}
+
+model Entity {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  aliasOfId    String?
+  aliasOf      Entity?       @relation("AliasRelation", fields: [aliasOfId], references: [id])
+  aliases      Entity[]      @relation("AliasRelation")
+  categoryId   String?
+  category     Category?     @relation(fields: [categoryId], references: [id])
+  tags         EntityTag[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+}
+
+model EntityTag {
+  entityId String
+  tagId    String
+  entity   Entity @relation(fields: [entityId], references: [id])
+  tag      Tag    @relation(fields: [tagId], references: [id])
+
+  @@id([entityId, tagId]) // clé primaire composite
 }

@@ -157,7 +157,8 @@ app.get("/reports/stats", async (req, reply) => {
     const withType = await app.prisma.transaction.count({
       where: { NOT: { typeOperation: null } },
     });
-
+    // console.log("🧩 withoutEntity :", withoutEntity);
+    // console.log("🧩 withoutType :", withoutEntity);
     const withoutEntity = total - withEntity;
     const withoutType = total - withType;
 
