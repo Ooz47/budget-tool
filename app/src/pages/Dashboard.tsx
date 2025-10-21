@@ -7,6 +7,9 @@ import SummaryCard from "../components/SummaryCard";
 import TypeSummaryTable from "../components/TypeSummaryTable";
 import EntitySummaryTable from "../components/EntitySummaryTable";
 import StatsSummary from "../components/StatsSummary";
+import CategorySummaryTable from "../components/CategorySummaryTable";
+import CategoryDonutChart from "../components/CategoryDonutChart";
+
 // import AdminTools from "../components/AdminTools";
 export default function Dashboard() {
   const [year, setYear] = useState("2025");
@@ -49,7 +52,12 @@ export default function Dashboard() {
         month={month}
         key={`v-${reloadKey}-${year}-${month}`}
       />
+      <h2>Répartition par catégorie</h2>
+<div style={{ display: "flex", gap: 20 }}>
+<CategorySummaryTable year={year} month={month} />
 
+<CategoryDonutChart year={year} month={month} mode="debit" />
+</div>
       <h2>Transactions</h2>
       <TransactionsTable
         key={`t-${reloadKey}-${year}-${month}`}

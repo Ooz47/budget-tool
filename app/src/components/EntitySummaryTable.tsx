@@ -6,6 +6,8 @@ type EntitySummary = {
   count: number;
   debit: number;
   credit: number;
+    aliases?: string[];
+      tags?: { name: string; color?: string }[];// 👈 ajouté pour afficher la liste des alias fusionnés
 };
 
 type Props = {
@@ -186,7 +188,47 @@ export default function EntitySummaryTable({ year, month }: Props) {
           ) : (
             paginatedRows.map((r) => (
               <tr key={r.entity} style={{ borderBottom: "1px solid #eee" }}>
-                <td>{r.entity}</td>
+                <td style={{ verticalAlign: "top" }}>
+  <div>{r.entity}</div>
+  {r.aliases && r.aliases.length > 0 && (
+<div
+  style={{
+    fontSize: "0.8em",
+    color: "#555",
+    marginTop: 2,
+    fontStyle: "italic",
+  }}
+>
+  (inclut {r.aliases.join(", ")})
+</div>
+  )}
+  {r.tags && r.tags.length > 0 && (
+  <div
+    style={{
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 4,
+      marginTop: 3,
+    }}
+  >
+    {r.tags.map((t, i) => (
+      <span
+        key={i}
+        style={{
+          backgroundColor: t.color || "#e5e7eb",
+          color: "#fff",
+          padding: "2px 6px",
+          borderRadius: 4,
+          fontSize: "0.75rem",
+        }}
+      >
+        {t.name}
+      </span>
+    ))}
+  </div>
+)}
+
+</td>
                 <td style={{ textAlign: "center" }}>{r.count}</td>
                 <td style={{ textAlign: "right", color: "#dc2626" }}>
                   {r.debit.toFixed(2)} €

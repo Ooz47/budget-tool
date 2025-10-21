@@ -18,7 +18,7 @@ type Tx = {
   categoryId?: string | null;
   typeOperation?: string | null;
 entityId?: string | null;
-entity?: { id: string; name: string } | null;
+entity?: { id: string; name: string, displayName: string | null} | null;
 
 };
 
@@ -76,20 +76,22 @@ export default function TransactionsTable({ year, month }: Props) {
     const q = query.trim().toLowerCase();
 
     return rows.filter((r) => {
+      const entityLabel = (r.entity?.displayName || r.entity?.name || "").toLowerCase();
       const matchesQuery =
         !q ||
         r.label?.toLowerCase().includes(q) ||
         r.details?.toLowerCase().includes(q) ||
         r.typeOperation?.toLowerCase().includes(q) ||
-        r.entity?.name?.toLowerCase().includes(q);
+         entityLabel.includes(q);
 
       const matchesType =
         filterType.length === 0 ||
         filterType.includes(r.typeOperation ?? "");
 
-      const matchesEntity =
-        filterEntity.length === 0 ||
-        filterEntity.includes(r.entity?.name ?? "");
+   
+const matchesEntity =
+  filterEntity.length === 0 ||
+  filterEntity.includes(r.entity?.displayName || r.entity?.name || "");
 
       const matchesAmount =
         (filterMin === "" || r.amount >= Number(filterMin)) &&
@@ -152,11 +154,15 @@ export default function TransactionsTable({ year, month }: Props) {
     { value: "AUTRE", label: "Autres" },
   ];
 
-  const entityOptions = Array.from(
-    new Set(rows.map((r) => r.entity?.name).filter(Boolean))
+const entityOptions = Array.from(
+  new Set(
+    rows.map(
+      (r) => r.entity?.displayName || r.entity?.name
+    ).filter(Boolean)
   )
-    .sort((a, b) => (a ?? "").localeCompare(b ?? "")) // ✅ sécurisé
-    .map((ent) => ({ value: ent!, label: ent! }));
+)
+  .sort((a, b) => (a ?? "").localeCompare(b ?? ""))
+  .map((ent) => ({ value: ent!, label: ent! }));
 
   if (loading) return <div>Chargement des transactions...</div>;
 
@@ -369,7 +375,7 @@ export default function TransactionsTable({ year, month }: Props) {
                 <td>{r.label}</td>
                 <td style={{ color: "#555" }}>{r.details ?? ""}</td>
                 <td>{r.typeOperation ?? ""}</td>
-                <td>{r.entity?.name ?? "-"}</td>
+                <td>{r.entity?.displayName || r.entity?.name || "-"}</td>
                 <td
                   style={{
                     textAlign: "right",

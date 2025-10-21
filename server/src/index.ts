@@ -7,6 +7,8 @@ import multipart from "@fastify/multipart";
 import { importRoutes } from "./routes/import";
 import { adminRoutes } from "./routes/admin";
 import { categoryRoutes } from "./routes/categories";
+import { entityRoutes } from "./routes/entities";
+import { tagRoutes } from "./routes/tags";
 
 const app = Fastify({ logger: true });
 
@@ -26,7 +28,9 @@ app.get("/", async () => ({ name: "budget-tool server", version: "0.1.0" }));
 app.register(transactionsRoutes);
 app.register(reportsRoutes);
 app.register(adminRoutes);
-app.register(categoryRoutes); // 👈 très important
+app.register(categoryRoutes); 
+app.register(entityRoutes);
+app.register(tagRoutes);
 
 app.listen({ port: 5175, host: "127.0.0.1" }).then(() => {
   app.log.info("Server running on http://127.0.0.1:5175");

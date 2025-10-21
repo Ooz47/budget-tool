@@ -55,6 +55,7 @@ model Tag {
 model Entity {
   id           String        @id @default(uuid())
   name         String        @unique
+  displayName  String?       // 👈 nouveau champ pour le nom d’affichage
   aliasOfId    String?
   aliasOf      Entity?       @relation("AliasRelation", fields: [aliasOfId], references: [id])
   aliases      Entity[]      @relation("AliasRelation")

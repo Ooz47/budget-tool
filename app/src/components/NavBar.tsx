@@ -36,7 +36,7 @@ export default function NavBar() {
           to="/"
           style={({ isActive }) => (isActive ? activeStyle : linkStyle)}
         >
-          🏠 Tableau de bord
+          📊 Tableau de bord
         </NavLink>
 
         <NavLink
@@ -46,11 +46,25 @@ export default function NavBar() {
           📁 Catégories
         </NavLink>
 
+           <NavLink
+          to="/tags"
+          style={({ isActive }) => (isActive ? activeStyle : linkStyle)}
+        >
+          🏷️ Tags
+        </NavLink>
+
+            <NavLink
+          to="/entities"
+          style={({ isActive }) => (isActive ? activeStyle : linkStyle)}
+        >
+          🏦 Entités
+        </NavLink>
+
         <NavLink
           to="/admin"
           style={({ isActive }) => (isActive ? activeStyle : linkStyle)}
         >
-          🧩 Outils
+          ⚙️ Outils
         </NavLink>
       </div>
     </nav>
