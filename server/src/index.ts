@@ -6,10 +6,15 @@ import { reportsRoutes } from "./routes/reports";
 import multipart from "@fastify/multipart";
 import { importRoutes } from "./routes/import";
 import { adminRoutes } from "./routes/admin";
+import { categoryRoutes } from "./routes/categories";
 
 const app = Fastify({ logger: true });
 
-app.register(cors, { origin: true });
+app.register(cors, {
+  origin: true,
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"], // 👈 important
+  allowedHeaders: ["Content-Type", "Authorization"],
+});
 app.register(multipart, {
   attachFieldsToBody: true, // <<<< essentiel ici
   limits: { files: 1, fileSize: 20 * 1024 * 1024 }, // 20 MB, par sécurité
@@ -17,11 +22,11 @@ app.register(multipart, {
 app.register(importRoutes);
 
 app.decorate("prisma", prisma);
-
 app.get("/", async () => ({ name: "budget-tool server", version: "0.1.0" }));
 app.register(transactionsRoutes);
 app.register(reportsRoutes);
 app.register(adminRoutes);
+app.register(categoryRoutes); // 👈 très important
 
 app.listen({ port: 5175, host: "127.0.0.1" }).then(() => {
   app.log.info("Server running on http://127.0.0.1:5175");

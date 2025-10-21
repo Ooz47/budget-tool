@@ -36,6 +36,12 @@ model Category {
   color       String?
   icon        String?
   description String?
+    // 🔹 Relation hiérarchique auto-référente
+  parentCategoryId String?     
+  parent           Category?   @relation("SubCategories", fields: [parentCategoryId], references: [id])
+  children         Category[]  @relation("SubCategories")
+
+  // 🔹 Relations externes
   entities    Entity[]
 }
 
