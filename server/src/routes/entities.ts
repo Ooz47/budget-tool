@@ -1,10 +1,14 @@
 import { FastifyInstance } from "fastify";
 
 export async function entityRoutes(app: FastifyInstance) {
-  // 🟢 Liste toutes les entités (avec catégories, tags et alias)
+  // 🟢 Liste toutes les entités du compte actif
   app.get("/entities", async (req, reply) => {
     try {
+      const { accountId } = (req.query as any) ?? {};
+      if (!accountId) return reply.code(400).send({ error: "Aucun compte sélectionné" });
+
       const entities = await app.prisma.entity.findMany({
+        where: { accountId },
         include: {
           category: true,
           tags: { include: { tag: true } },
@@ -13,6 +17,7 @@ export async function entityRoutes(app: FastifyInstance) {
         },
         orderBy: { name: "asc" },
       });
+
       return entities;
     } catch (e: any) {
       reply.code(500).send({ error: e.message });
@@ -32,41 +37,44 @@ export async function entityRoutes(app: FastifyInstance) {
           aliasOf: true,
         },
       });
-      if (!entity) {
-        return reply.code(404).send({ error: "Entité non trouvée." });
-      }
+
+      if (!entity) return reply.code(404).send({ error: "Entité non trouvée." });
       return entity;
     } catch (e: any) {
       reply.code(500).send({ error: e.message });
     }
   });
 
-  // 🟢 Crée une nouvelle entité
+  // 🟢 Crée une nouvelle entité (rattachée à un compte)
   app.post("/entities", async (req, reply) => {
     try {
-      const { name, categoryId, tagIds } = req.body as {
+      const { name, accountId, categoryId, tagIds } = req.body as {
         name: string;
+        accountId: string;
         categoryId?: string | null;
         tagIds?: string[];
       };
 
-      if (!name?.trim()) {
-        return reply.code(400).send({ error: "Le champ 'name' est obligatoire." });
-      }
+      if (!name?.trim()) return reply.code(400).send({ error: "Le champ 'name' est obligatoire." });
+      if (!accountId) return reply.code(400).send({ error: "Le champ 'accountId' est obligatoire." });
 
-      const existing = await app.prisma.entity.findUnique({ where: { name } });
+      const existing = await app.prisma.entity.findFirst({
+        where: { name, accountId },
+      });
       if (existing) {
-        return reply.code(409).send({ error: "Une entité avec ce nom existe déjà." });
+        return reply.code(409).send({ error: "Cette entité existe déjà pour ce compte." });
       }
 
       const entity = await app.prisma.entity.create({
         data: {
           name: name.trim(),
+          accountId,
           categoryId: categoryId || null,
           tags: {
-            create: tagIds?.map((tagId) => ({
-              tag: { connect: { id: tagId } },
-            })) || [],
+            create:
+              tagIds?.map((tagId) => ({
+                tag: { connect: { id: tagId } },
+              })) || [],
           },
         },
         include: {
@@ -99,10 +107,11 @@ export async function entityRoutes(app: FastifyInstance) {
           categoryId: categoryId ?? null,
           aliasOfId: aliasOfId ?? null,
           tags: {
-            deleteMany: {}, // supprime les tags existants avant recréation
-            create: tagIds?.map((tagId) => ({
-              tag: { connect: { id: tagId } },
-            })) || [],
+            deleteMany: {},
+            create:
+              tagIds?.map((tagId) => ({
+                tag: { connect: { id: tagId } },
+              })) || [],
           },
         },
         include: {
@@ -129,52 +138,49 @@ export async function entityRoutes(app: FastifyInstance) {
   });
 
   // 🧩 Fusionne plusieurs entités dans une principale (alias)
-// 🧩 Synchronise les alias d'une entité principale
-app.post("/entities/:id/merge", async (req, reply) => {
-  try {
-    const id = req.params["id"];
-    const { aliasIds } = req.body as { aliasIds: string[] };
+  app.post("/entities/:id/merge", async (req, reply) => {
+    try {
+      const id = req.params["id"];
+      const { aliasIds } = req.body as { aliasIds: string[] };
 
-    // Liste complète des entités aliasées actuellement vers celle-ci
-    const currentAliases = await app.prisma.entity.findMany({
-      where: { aliasOfId: id },
-      select: { id: true },
-    });
-
-    const currentIds = currentAliases.map((a) => a.id);
-    const newIds = aliasIds || [];
-
-    // 1️⃣ Détacher les alias décochés
-    const toDetach = currentIds.filter((x) => !newIds.includes(x));
-    if (toDetach.length > 0) {
-      await app.prisma.entity.updateMany({
-        where: { id: { in: toDetach } },
-        data: { aliasOfId: null },
+      const currentAliases = await app.prisma.entity.findMany({
+        where: { aliasOfId: id },
+        select: { id: true },
       });
+
+      const currentIds = currentAliases.map((a) => a.id);
+      const newIds = aliasIds || [];
+
+      // Détacher les alias décochés
+      const toDetach = currentIds.filter((x) => !newIds.includes(x));
+      if (toDetach.length > 0) {
+        await app.prisma.entity.updateMany({
+          where: { id: { in: toDetach } },
+          data: { aliasOfId: null },
+        });
+      }
+
+      // Attacher les nouveaux alias
+      const toAttach = newIds.filter((x) => !currentIds.includes(x));
+      if (toAttach.length > 0) {
+        await app.prisma.entity.updateMany({
+          where: { id: { in: toAttach } },
+          data: { aliasOfId: id },
+        });
+      }
+
+      return {
+        success: true,
+        mergedInto: id,
+        attached: toAttach,
+        detached: toDetach,
+      };
+    } catch (e: any) {
+      reply.code(500).send({ error: e.message });
     }
+  });
 
-    // 2️⃣ Attacher les nouveaux alias
-    const toAttach = newIds.filter((x) => !currentIds.includes(x));
-    if (toAttach.length > 0) {
-      await app.prisma.entity.updateMany({
-        where: { id: { in: toAttach } },
-        data: { aliasOfId: id },
-      });
-    }
-
-    return {
-      success: true,
-      mergedInto: id,
-      attached: toAttach,
-      detached: toDetach,
-    };
-  } catch (e: any) {
-    reply.code(500).send({ error: e.message });
-  }
-});
-
-
-    // ✏️ Met à jour le nom d'affichage (displayName)
+  // ✏️ Met à jour le nom d'affichage
   app.patch("/entities/:id/display", async (req, reply) => {
     try {
       const id = req.params["id"];
@@ -183,12 +189,7 @@ app.post("/entities/:id/merge", async (req, reply) => {
       const updated = await app.prisma.entity.update({
         where: { id },
         data: { displayName: displayName?.trim() || null },
-        select: {
-          id: true,
-          name: true,
-          displayName: true,
-          updatedAt: true,
-        },
+        select: { id: true, name: true, displayName: true, updatedAt: true },
       });
 
       return updated;
@@ -196,7 +197,4 @@ app.post("/entities/:id/merge", async (req, reply) => {
       reply.code(500).send({ error: e.message });
     }
   });
-
-
-
 }

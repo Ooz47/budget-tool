@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useActiveAccount } from "../context/ActiveAccountContext";
 import api from "../api";
 
 type Stats = {
@@ -13,15 +14,17 @@ type Stats = {
 export default function StatsSummary() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(false);
-
+const { activeAccountId } = useActiveAccount();
   useEffect(() => {
+      
+          if (!activeAccountId) return; // ⛔ évite d'appeler l'API sans compte actif
     setLoading(true);
     api
       .get<Stats>("/reports/stats")
       .then((r) => setStats(r.data))
       .catch((err) => console.error("Erreur API /reports/stats :", err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [activeAccountId]);
 
   if (loading) return <div>Chargement des statistiques...</div>;
   if (!stats) return null;

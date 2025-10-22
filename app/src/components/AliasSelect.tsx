@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchEntities } from "../api/entities";
+// import { useActiveAccount } from "../context/ActiveAccountContext";
 import api from "../api";
 
 interface Props {
@@ -20,9 +21,11 @@ export default function AliasSelect({ entityId, onClose, onUpdated }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
+//  const { activeAccountId } = useActiveAccount();
   // Charger toutes les entités
   useEffect(() => {
+   
+// if (!activeAccountId) return; // ⛔ évite d'appeler l'API sans compte actif
     const load = async () => {
       setLoading(true);
       try {

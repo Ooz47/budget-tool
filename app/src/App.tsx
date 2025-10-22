@@ -6,7 +6,7 @@ import CategoriesManager from "./pages/CategoriesManager";
 import EntitiesManager from "./pages/EntitiesManager";
 import TagsManager from "./pages/TagsManager";
 import NavBar from "./components/NavBar";
-
+import AccountsManager from "./pages/AccountsManager";
 
 
 export default function App() {
@@ -20,6 +20,7 @@ export default function App() {
           <Route path="/categories" element={<CategoriesManager />} />
           <Route path="/tags" element={<TagsManager />} />
           <Route path="/admin" element={<AdminTools />} />
+          <Route path="/accounts" element={<AccountsManager />} />
         </Routes>
       </div>
     </>

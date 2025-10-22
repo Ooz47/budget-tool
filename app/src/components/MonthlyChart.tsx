@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useActiveAccount } from "../context/ActiveAccountContext";
 import api from "../api";
 import {
   BarChart,
@@ -10,7 +11,6 @@ import {
   Legend,
   ResponsiveContainer,
   Cell,
-  Line,
 } from "recharts";
 
 type Monthly = {
@@ -28,8 +28,10 @@ type Props = {
 export default function MonthlyChart({ year, month }: Props) {
   const [data, setData] = useState<Monthly[]>([]);
   const [loading, setLoading] = useState(false);
+const { activeAccountId } = useActiveAccount();
 
   useEffect(() => {
+    if (!activeAccountId) return; // ⛔ évite d'appeler l'API sans compte actif
     setLoading(true);
     api
       .get<Monthly[]>("/reports/monthly", { params: { year, month } })
@@ -49,7 +51,7 @@ export default function MonthlyChart({ year, month }: Props) {
         setData([]);
       })
       .finally(() => setLoading(false));
-  }, [year, month]);
+  }, [year, month, activeAccountId]);
 
   if (loading) return <div>Chargement du graphique...</div>;
   if (!data.length)

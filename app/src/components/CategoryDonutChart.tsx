@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useActiveAccount } from "../context/ActiveAccountContext";
 import api from "../api";
 import {
   PieChart,
@@ -40,9 +41,11 @@ const COLORS = [
 export default function CategoryDonutChart({ year, month, mode = "debit" }: Props) {
   const [rows, setRows] = useState<CategoryNode[]>([]);
   const [loading, setLoading] = useState(false);
-
+const { activeAccountId } = useActiveAccount();
   // 🧭 Charger les données
   useEffect(() => {
+    
+if (!activeAccountId) return; // ⛔ évite d'appeler l'API sans compte actif
     setLoading(true);
     api
       .get<{ data: CategoryNode[] }>("/reports/by-category", {
@@ -54,7 +57,7 @@ export default function CategoryDonutChart({ year, month, mode = "debit" }: Prop
         setRows([]);
       })
       .finally(() => setLoading(false));
-  }, [year, month]);
+  }, [year, month, activeAccountId]);
 
   // 🧮 Préparer les données (catégories racines seulement)
   const data = useMemo(() => {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useActiveAccount } from "../context/ActiveAccountContext";
 import api from "../api";
 import { ArrowUpRight, ArrowDownRight, Scale } from "lucide-react"; // icônes shadcn/lucide
 
@@ -10,15 +11,17 @@ type Props = {
 export default function SummaryCard({ year, month }: Props) {
   const [data, setData] = useState({ debit: 0, credit: 0, balance: 0 });
   const [loading, setLoading] = useState(false);
-
+  const { activeAccountId } = useActiveAccount();
   useEffect(() => {
+    
+          if (!activeAccountId) return; // ⛔ évite d'appeler l'API sans compte actif
     setLoading(true);
     api
       .get("/reports/summary", { params: { year, month } })
       .then((r) => setData(r.data))
       .catch(() => setData({ debit: 0, credit: 0, balance: 0 }))
       .finally(() => setLoading(false));
-  }, [year, month]);
+  }, [year, month, activeAccountId]);
 
   if (loading) return <div>Chargement du résumé...</div>;
 

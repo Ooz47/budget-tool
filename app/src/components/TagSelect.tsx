@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+// import { useActiveAccount } from "../context/ActiveAccountContext";
 import { fetchTags } from "../api/tags";
 
 type Tag = {
@@ -20,9 +21,11 @@ interface TagSelectProps {
 export default function TagSelect({ value, onChange }: TagSelectProps) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
-
+// const { activeAccountId } = useActiveAccount();
   useEffect(() => {
     const loadTags = async () => {
+        
+            // if (!activeAccountId) return; // ⛔ évite d'appeler l'API sans compte actif
       setLoading(true);
       try {
         const res = await fetchTags();

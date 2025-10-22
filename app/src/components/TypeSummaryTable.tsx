@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useActiveAccount } from "../context/ActiveAccountContext";
 import api from "../api";
 
 type TypeSummary = {
@@ -17,8 +18,9 @@ type Props = {
 export default function TypeSummaryTable({ year, month }: Props) {
   const [rows, setRows] = useState<TypeSummary[]>([]);
   const [loading, setLoading] = useState(false);
-
+const { activeAccountId } = useActiveAccount();
   useEffect(() => {
+      if (!activeAccountId) return; // ⛔ évite d'appeler l'API sans compte actif
     setLoading(true);
     api
       .get<TypeSummary[]>("/reports/by-type", { params: { year, month } })
@@ -28,7 +30,7 @@ export default function TypeSummaryTable({ year, month }: Props) {
         setRows([]);
       })
       .finally(() => setLoading(false));
-  }, [year, month]);
+  }, [year, month, activeAccountId]);
 
   if (loading) return <div>Chargement du résumé par type...</div>;
   if (!rows.length) return <div>Aucune donnée pour cette période.</div>;

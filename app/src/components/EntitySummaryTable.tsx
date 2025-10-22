@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
+import { useActiveAccount } from "../context/ActiveAccountContext";
 import api from "../api";
 
 type EntitySummary = {
@@ -32,11 +33,13 @@ export default function EntitySummaryTable({ year, month }: Props) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const rowsPerPage = 20;
-
+const { activeAccountId } = useActiveAccount();
   // 🧭 Référence pour le scroll
   const tableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    
+if (!activeAccountId) return; // ⛔ évite d'appeler l'API sans compte actif
     setLoading(true);
     api
       .get<EntitySummaryResponse>("/reports/by-entity", { params: { year, month } })
@@ -46,7 +49,7 @@ export default function EntitySummaryTable({ year, month }: Props) {
         setSummary({ data: [], missing: 0 });
       })
       .finally(() => setLoading(false));
-  }, [year, month]);
+  }, [year, month, activeAccountId]);
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();

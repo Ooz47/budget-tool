@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Select from "react-select";
+// import { useActiveAccount } from "../context/ActiveAccountContext";
 import { fetchCategories } from "../api/categories";
 
 type Category = {
@@ -27,8 +28,10 @@ export default function CategorySelect({
 }: Props) {
   const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
   const [loading, setLoading] = useState(false);
-
+// const { activeAccountId } = useActiveAccount();
   useEffect(() => {
+    
+// if (!activeAccountId) return; // ⛔ évite d'appeler l'API sans compte actif
     setLoading(true);
     fetchCategories()
       .then((cats: Category[]) => {

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useActiveAccount } from "../context/ActiveAccountContext";
 import api from "../api";
 
 type CategoryNode = {
@@ -22,9 +23,11 @@ export default function CategorySummaryTable({ year, month }: Props) {
   const [query, setQuery] = useState("");
   const [sortField, setSortField] = useState<"debit" | "credit" | "count">("debit");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-
+const { activeAccountId } = useActiveAccount();
   // 🧭 Charger les données
   useEffect(() => {
+    
+if (!activeAccountId) return; // ⛔ évite d'appeler l'API sans compte actif
     setLoading(true);
     api
       .get<{ data: CategoryNode[] }>("/reports/by-category", { params: { year, month } })
@@ -36,7 +39,7 @@ export default function CategorySummaryTable({ year, month }: Props) {
         setRows([]);
       })
       .finally(() => setLoading(false));
-  }, [year, month]);
+  }, [year, month, activeAccountId]);
 
   // 🔍 Filtrage simple par nom
   const filteredRows = useMemo(() => {

@@ -1,5 +1,7 @@
 import { NavLink } from "react-router-dom";
-
+import { useActiveAccount } from "../context/ActiveAccountContext";
+import { useEffect, useState } from "react";
+import api from "../api"; // pour récupérer la liste des comptes
 export default function NavBar() {
   const linkStyle: React.CSSProperties = {
     padding: "8px 14px",
@@ -16,6 +18,20 @@ export default function NavBar() {
     color: "white",
   };
 
+  //  const { activeAccountId, activeAccountName } = useActiveAccount();
+
+   const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
+const { activeAccountId, activeAccountName, setActiveAccount } = useActiveAccount();
+
+// Charger la liste des comptes au montage
+useEffect(() => {
+  api.get("/accounts")
+    .then(res => setAccounts(res.data))
+    .catch(err => console.error("Erreur chargement comptes :", err));
+}, []);
+
+   console.log("🔍 Compte actif :", activeAccountId, activeAccountName);
+if (!activeAccountId) console.warn("⚠️ Aucun compte actif");
   return (
     <nav
       style={{
@@ -30,7 +46,40 @@ export default function NavBar() {
         zIndex: 100,
       }}
     >
-      <h3 style={{ margin: 0, color: "#1e3a8a" }}>💰 Budget Tool</h3>
+      <h3 style={{ margin: 0, color: "#1e3a8a" }}>
+  💰 Budget Tool
+  {activeAccountName && (
+    <span style={{ fontSize: "0.9rem", color: "#475569", marginLeft: 8 }}>
+      — {activeAccountName}
+    </span>
+  )}
+
+  {/* 🔽 Sélecteur de compte */}
+  {accounts.length > 1 && (
+    <select
+      value={activeAccountId || ""}
+      onChange={(e) => {
+        const acc = accounts.find(a => a.id === e.target.value);
+        if (acc) setActiveAccount(acc.id, acc.name);
+      }}
+      style={{
+        marginLeft: 12,
+        padding: "4px 6px",
+        borderRadius: 6,
+        border: "1px solid #ccc",
+        fontSize: "0.85rem",
+      }}
+    >
+      <option value="" disabled>Choisir un compte</option>
+      {accounts.map((a) => (
+        <option key={a.id} value={a.id}>
+          {a.name}
+        </option>
+      ))}
+    </select>
+  )}
+</h3>
+
       <div style={{ display: "flex", gap: "8px" }}>
         <NavLink
           to="/"
@@ -66,6 +115,8 @@ export default function NavBar() {
         >
           ⚙️ Outils
         </NavLink>
+
+        <NavLink to="/accounts" style={({ isActive }) => (isActive ? activeStyle : linkStyle)}>💼 Comptes</NavLink>
       </div>
     </nav>
   );

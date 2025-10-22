@@ -9,6 +9,7 @@ import { adminRoutes } from "./routes/admin";
 import { categoryRoutes } from "./routes/categories";
 import { entityRoutes } from "./routes/entities";
 import { tagRoutes } from "./routes/tags";
+import { accountRoutes } from "./routes/accounts";
 
 const app = Fastify({ logger: true });
 
@@ -31,6 +32,7 @@ app.register(adminRoutes);
 app.register(categoryRoutes); 
 app.register(entityRoutes);
 app.register(tagRoutes);
+app.register(accountRoutes);
 
 app.listen({ port: 5175, host: "127.0.0.1" }).then(() => {
   app.log.info("Server running on http://127.0.0.1:5175");

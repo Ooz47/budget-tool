@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
+import { useActiveAccount } from "../context/ActiveAccountContext";
 import Select from "react-select";
+
 import api from "../api";
 
 type Tx = {
@@ -44,11 +46,13 @@ export default function TransactionsTable({ year, month }: Props) {
   const [filterEntity, setFilterEntity] = useState<string[]>([]);
   const [filterMin, setFilterMin] = useState<number | "">("");
   const [filterMax, setFilterMax] = useState<number | "">("");
-
+const { activeAccountId } = useActiveAccount();
   const tableRef = useRef<HTMLDivElement>(null);
 
   // --- 1️⃣ Chargement des transactions
   useEffect(() => {
+        
+      if (!activeAccountId) return; // ⛔ évite d'appeler l'API sans compte actif
     setLoading(true);
     api
       .get<Tx[]>("/transactions", { params: { year, month } })
@@ -69,7 +73,7 @@ export default function TransactionsTable({ year, month }: Props) {
         setRows([]);
       })
       .finally(() => setLoading(false));
-  }, [year, month]);
+  }, [year, month, activeAccountId]);
 
   // --- 2️⃣ Filtres dynamiques combinés à la recherche
   const filteredRows = useMemo(() => {

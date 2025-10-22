@@ -9,61 +9,67 @@ datasource db {
 }
 
 model Transaction {
-  id            String   @id @default(uuid())
-  bank          String
+  id        String  @id @default(uuid())
+  bank      String
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id])
+
   accountIban   String?
   dateOperation DateTime
   dateValeur    DateTime?
   label         String
   details       String?
-  debit         Float    @default(0)
-  credit        Float    @default(0)
+  debit         Float     @default(0)
+  credit        Float     @default(0)
   amount        Float
   yearMonth     String
   sourceFile    String
   categoryId    String?
-  fingerprint   String   @unique
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  fingerprint   String    @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   typeOperation String?
   entityId      String?
-  entity        Entity?  @relation(fields: [entityId], references: [id])
+  entity        Entity?   @relation(fields: [entityId], references: [id])
 }
 
 model Category {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  color       String?
-  icon        String?
-  description String?
-    // 🔹 Relation hiérarchique auto-référente
-  parentCategoryId String?     
-  parent           Category?   @relation("SubCategories", fields: [parentCategoryId], references: [id])
-  children         Category[]  @relation("SubCategories")
+  id               String     @id @default(uuid())
+  name             String     @unique
+  color            String?
+  icon             String?
+  description      String?
+  parentCategoryId String?
+  parent           Category?  @relation("SubCategories", fields: [parentCategoryId], references: [id])
+  children         Category[] @relation("SubCategories")
 
-  // 🔹 Relations externes
-  entities    Entity[]
+  // Relations externes
+  entities Entity[]
 }
 
 model Tag {
-  id        String      @id @default(uuid())
-  name      String      @unique
-  color     String?
-  entities  EntityTag[]
+  id       String      @id @default(uuid())
+  name     String      @unique
+  color    String?
+  entities EntityTag[]
 }
 
 model Entity {
-  id           String        @id @default(uuid())
-  name         String        @unique
-  displayName  String?       // 👈 nouveau champ pour le nom d’affichage
-  aliasOfId    String?
-  aliasOf      Entity?       @relation("AliasRelation", fields: [aliasOfId], references: [id])
-  aliases      Entity[]      @relation("AliasRelation")
-  categoryId   String?
-  category     Category?     @relation(fields: [categoryId], references: [id])
-  tags         EntityTag[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id         String     @id @default(uuid())
+  name       String
+  accountId  String
+  account    Account    @relation(fields: [accountId], references: [id])
+
+  aliasOfId  String?
+  aliasOf    Entity?    @relation("AliasRelation", fields: [aliasOfId], references: [id])
+  aliases    Entity[]   @relation("AliasRelation")
+
+  categoryId String?
+  category   Category?  @relation(fields: [categoryId], references: [id])
+  tags       EntityTag[]
+
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
   transactions Transaction[]
 }
 
@@ -73,5 +79,19 @@ model EntityTag {
   entity   Entity @relation(fields: [entityId], references: [id])
   tag      Tag    @relation(fields: [tagId], references: [id])
 
-  @@id([entityId, tagId]) // clé primaire composite
+  @@id([entityId, tagId])
+}
+
+model Account {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  bankCode    String?
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  transactions Transaction[]
+  entities     Entity[]
 }
