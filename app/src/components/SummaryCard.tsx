@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useActiveAccount } from "../context/ActiveAccountContext";
 import api from "../api";
-import { ArrowUpRight, ArrowDownRight, Scale } from "lucide-react"; // icônes shadcn/lucide
+// import { ArrowUpRight, ArrowDownRight, Scale } from "lucide-react"; // icônes shadcn/lucide
+import Icons from "../icons";
+
 
 type Props = {
   year: string;
@@ -12,6 +14,12 @@ export default function SummaryCard({ year, month }: Props) {
   const [data, setData] = useState({ debit: 0, credit: 0, balance: 0 });
   const [loading, setLoading] = useState(false);
   const { activeAccountId } = useActiveAccount();
+
+  //icons
+const ArrowUpRight = Icons["ArrowUpRight"];
+const ArrowDownRight = Icons["ArrowDownRight"];
+const Scale = Icons["Scale"];
+
   useEffect(() => {
     
           if (!activeAccountId) return; // ⛔ évite d'appeler l'API sans compte actif

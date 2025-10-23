@@ -49,6 +49,7 @@ export async function importRoutes(app: FastifyInstance) {
         ? resp.data.transactions
         : [];
       if (!rows.length)
+        
         return { imported: 0, updated: 0, skipped: 0, file: filename };
 
       let inserted = 0,

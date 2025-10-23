@@ -7,15 +7,30 @@ const api = axios.create({
 
 // --- Intercepteur dynamique ---
 api.interceptors.request.use((config) => {
-  // 🔁 Récupère la valeur la plus fraîche directement depuis le localStorage
   const activeAccountId = localStorage.getItem("activeAccountId");
 
-  if (activeAccountId) {
-    if (config.method === "get" || config.method === "delete") {
-      config.params = { ...(config.params || {}), accountId: activeAccountId };
-    } else if (config.data && typeof config.data === "object") {
-      config.data = { ...config.data, accountId: activeAccountId };
+  if (!activeAccountId) return config;
+
+  // ✅ Si c’est une requête GET ou DELETE → ajouter dans les params
+  if (config.method === "get" || config.method === "delete") {
+    config.params = { ...(config.params || {}), accountId: activeAccountId };
+  }
+  // ✅ Si c’est un FormData → utiliser append()
+  else if (config.data instanceof FormData) {
+    // éviter les doublons
+    if (!config.data.has("accountId")) {
+      config.data.append("accountId", activeAccountId);
     }
+    // 🧠 ne pas définir Content-Type, Axios le gère
+    if (config.headers) delete config.headers["Content-Type"];
+  }
+  // ✅ Sinon, c’est un objet JSON normal
+  else if (typeof config.data === "object") {
+    config.data = { ...config.data, accountId: activeAccountId };
+    config.headers = {
+      ...(config.headers || {}),
+      "Content-Type": "application/json",
+    };
   }
 
   return config;

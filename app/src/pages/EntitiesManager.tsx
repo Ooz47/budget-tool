@@ -1,9 +1,11 @@
+import { useActiveAccount } from "../context/ActiveAccountContext";
 import { useEffect, useState } from "react";
 import {
   fetchEntities,
   createEntity,
   updateEntity,
   deleteEntity,
+  updateEntityDisplayName,
   type Entity,
 } from "../api/entities";
 import { fetchTags } from "../api/tags"; // à créer
@@ -30,6 +32,8 @@ const [form, setForm] = useState({
   tagIds: [] as string[],
 });
 
+const { activeAccountId } = useActiveAccount();
+
 
   // --- Charger les entités et tags ---
   const loadEntities = async () => {
@@ -53,10 +57,13 @@ const [form, setForm] = useState({
     }
   };
 
-  useEffect(() => {
-    loadEntities();
-    loadTags();
-  }, []);
+useEffect(() => {
+if (!activeAccountId) {
+  return <p style={{ padding: 20, color: "#666" }}>Aucun compte sélectionné.</p>;
+}
+  loadEntities();
+  loadTags();
+}, [activeAccountId]);
 
   // --- Soumission formulaire ---
 const handleSubmit = async (e: React.FormEvent) => {
@@ -132,7 +139,11 @@ setForm({
           padding: 16,
           border: "1px solid #ddd",
           borderRadius: 8,
-          background: "#fafafa",
+           background: editing ? "#eef2ff" : "#fafafa",
+  transition: "background-color 0.3s ease",
+              position: "sticky",   // 👈 nouveau
+    top: 80,              // marge par rapport au haut de la page
+    alignSelf: "flex-start",
         }}
       >
         <h3 style={{ marginTop: 0 }}>
@@ -144,18 +155,29 @@ setForm({
   <input
     type="text"
     value={form.name}
-    readOnly
+onChange={(e) => setForm({ ...form, name: e.target.value })}
+    readOnly={!!editing} // 🔒 lecture seule si édition
     style={{
       width: "100%",
       padding: 6,
       marginTop: 4,
-      background: "#f3f4f6",
+      background: editing ? "#f3f4f6" : "white",
       border: "1px solid #ddd",
-      color: "#666",
-      cursor: "not-allowed",
+      color: editing ? "#666" : "#111",
+      cursor: editing ? "not-allowed" : "text",
     }}
   />
 </label>
+{editing ? (
+  <small style={{ color: "#777" }}>
+    Ce nom d’origine ne peut pas être modifié (lié à l’import CSV).
+  </small>
+) : (
+  <small style={{ color: "#777" }}>
+    Nom technique utilisé pour relier automatiquement les transactions.
+  </small>
+)}
+
 
 {/* Nom d’affichage (modifiable) */}
 <label>

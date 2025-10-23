@@ -7,6 +7,9 @@ import {
 } from "../api/categories";
 import CategorySelect from "../components/CategorySelect";
 
+import { getIcon } from "../icons";
+
+
 type Category = {
   id: string;
   name: string;
@@ -104,7 +107,11 @@ export default function CategoriesManager() {
   const tree = buildTree(categories);
 
   // --- Rendu récursif ---
-  const renderCategoryRow = (cat: Category, level = 0) => (
+const renderCategoryRow = (cat: Category, level = 0) => {
+  // 🧠 Récupère dynamiquement le composant d’icône
+  const Icon = getIcon(cat.icon);
+
+  return (
     <tr
       key={cat.id}
       style={{
@@ -114,7 +121,8 @@ export default function CategoriesManager() {
       }}
     >
       <td style={{ paddingLeft: level * 24, whiteSpace: "nowrap" }}>
-        {cat.icon && <span style={{ marginRight: 6 }}>{cat.icon}</span>}
+
+{Icon ? <Icon size={16} style={{ marginRight: 6, verticalAlign: "middle" }} /> : <span>?</span>}
         <span
           style={{
             backgroundColor: cat.color || "#ccc",
@@ -160,6 +168,7 @@ export default function CategoriesManager() {
       </td>
     </tr>
   );
+};
 
   const renderTree = (nodes: Category[], level = 0): JSX.Element[] =>
     nodes.flatMap((node) => [

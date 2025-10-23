@@ -20,9 +20,10 @@ const submit = async (e: React.FormEvent) => {
   fd.append("accountId", activeAccountId);
 
   try {
-    const r = await api.post("/import/sg-csv", fd, {
-      headers: { "Content-Type": "multipart/form-data" }, // ✅ forcer type ici
-    });
+ for (const [key, val] of fd.entries()) {
+  console.log("🧾 FormData:", key, val);
+}
+    const r = await api.post("/import/sg-csv", fd);
     setMsg(
       `Import réussi : +${r.data.imported}, modifiés: ${r.data.updated}`
     );

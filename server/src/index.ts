@@ -1,9 +1,9 @@
 import Fastify from "fastify";
+import multipart from "@fastify/multipart";
 import cors from "@fastify/cors";
 import { prisma } from "./lib/prisma";
 import { transactionsRoutes } from "./routes/transactions";
 import { reportsRoutes } from "./routes/reports";
-import multipart from "@fastify/multipart";
 import { importRoutes } from "./routes/import";
 import { adminRoutes } from "./routes/admin";
 import { categoryRoutes } from "./routes/categories";
@@ -20,7 +20,9 @@ app.register(cors, {
 });
 app.register(multipart, {
   attachFieldsToBody: true, // <<<< essentiel ici
-  limits: { files: 1, fileSize: 20 * 1024 * 1024 }, // 20 MB, par sécurité
+limits: {
+    fileSize: 10 * 1024 * 1024, // 10 Mo max
+  },
 });
 app.register(importRoutes);
 

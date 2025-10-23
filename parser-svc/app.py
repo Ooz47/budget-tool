@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, Form
 from fastapi.responses import JSONResponse
 import csv, io, uuid
 from datetime import datetime
+import re, unicodedata
 
 app = FastAPI(title="parser-svc")
 
@@ -34,43 +35,74 @@ def ym(d: datetime) -> str:
     return d.strftime("%Y-%m")
 
 def normalize(s: str) -> str:
+    """
+    Normalise les chaînes pour comparaison :
+    - minuscules
+    - suppression des accents et caractères spéciaux
+    - conversion du '�' et autres caractères mal décodés
+    - suppression des doubles espaces et caractères invisibles
+    """
+    if not s:
+        return ""
+
+    # Retirer espaces insécables et caractères invisibles
     t = s.strip().lower()
-    repl = {
-        "é":"e","è":"e","ê":"e","ë":"e",
-        "à":"a","â":"a","ä":"a",
-        "î":"i","ï":"i",
-        "ô":"o","ö":"o",
-        "û":"u","ü":"u",
-        "ç":"c",
-        "’":"'", "œ":"oe"
-    }
-    for k,v in repl.items():
-        t = t.replace(k,v)
+    t = t.replace("\xa0", " ").replace("\u200b", " ")
+
+    # Essayer de corriger les caractères cassés (�, �t, etc.)
+    t = t.replace("�", "e")  # le plus fréquent
+    t = t.replace("œ", "oe").replace("’", "'")
+
+    # Normalisation Unicode (supprime accents)
+    t = unicodedata.normalize("NFD", t)
+    t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+
+    # Retirer tout ce qui n’est pas alphanumérique ni espace
+    t = re.sub(r"[^a-z0-9\s\-\_']", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+
     return t
 
 def find_header_and_slice(text: str) -> tuple[list[str], list[list[str]]]:
     """
-    Retourne (headers, rows) en ignorant toute ligne avant l'entête.
-    Détecte deux formats SG :
-    A) "Date opération;Date valeur;Libellé;Débit;Crédit"
-    B) "Date de l'opération;Libellé;Détail de l'écriture;Montant de l'opération;Devise"
+    Version robuste : ignore lignes parasites et cherche un header plausible.
     """
-    lines = [ln for ln in text.splitlines() if ln.strip() != ""]
-    # Chercher la première ligne qui ressemble à une entête
+    lines = text.splitlines()
+
+    # Nettoyer : ignorer lignes vides et parasites
+    clean_lines = []
+    for ln in lines:
+        if not ln.strip():
+            continue
+        if ln.strip().startswith("="):
+            continue
+        # ignorer aussi les lignes trop courtes ou sans point-virgule
+        if ";" not in ln:
+            continue
+        clean_lines.append(ln)
+
+    # Recherche d’un header plausible
     header_idx = -1
-    for i, ln in enumerate(lines):
+    for i, ln in enumerate(clean_lines):
         low = normalize(ln)
-        if ("date" in low and "operation" in low and ";" in ln) or \
-           ("date de l" in low and "operation" in low and ";" in ln) or \
-           ("libelle" in low and ";" in ln) or \
-           ("montant" in low and ";" in ln and "devise" in low):
+        if (
+            ("date" in low and "operation" in low and ";" in ln)
+            or ("libelle" in low and ";" in ln)
+            or ("montant" in low and ";" in ln and "devise" in low)
+        ):
             header_idx = i
             break
-    if header_idx == -1:
-        # Pas d'entête claire : on tente tout le fichier comme CSV et on espère la 1re ligne en header
-        header_idx = 0
 
-    snippet = "\n".join(lines[header_idx:])
+    if header_idx == -1 and clean_lines:
+        # Pas trouvé ? on prend la première ligne qui contient "date" ou "libellé"
+        for i, ln in enumerate(clean_lines):
+            if "date" in ln.lower() or "libell" in ln.lower():
+                header_idx = i
+                break
+        if header_idx == -1:
+            header_idx = 0
+
+    snippet = "\n".join(clean_lines[header_idx:])
     reader = csv.reader(io.StringIO(snippet), delimiter=";")
     rows = list(reader)
     if not rows:
@@ -79,6 +111,8 @@ def find_header_and_slice(text: str) -> tuple[list[str], list[list[str]]]:
     headers = rows[0]
     data = rows[1:]
     return headers, data
+
+
 
 def parse_format_A(headers: list[str], data: list[list[str]], filename: str) -> list[dict]:
     """
@@ -214,6 +248,9 @@ async def parse_sg_csv(file: UploadFile = Form(...)):
     has_montant  = any("montant" in h for h in hnorm)
     has_devise   = any("devise" in h for h in hnorm)
     has_detail   = any("detail" in h for h in hnorm)
+    # print(f"🧾 Header détecté ({file.filename}):", headers)
+    # print("→ Normalisés:", hnorm)
+    # print(f"has_date_val={has_date_val}, has_montant={has_montant}, has_devise={has_devise}, has_detail={has_detail}")
 
     if has_date_val:
         # Format A
@@ -227,5 +264,8 @@ async def parse_sg_csv(file: UploadFile = Form(...)):
             out = parse_format_B(headers, data, file.filename)
         else:
             out = []
+    fmt = "A" if has_date_val else "B" if (has_montant and has_devise) else "?"
+    print(f"✅ {file.filename}: {len(out)} transactions détectées ({len(data)} lignes CSV brutes) — format {fmt}")
+
 
     return JSONResponse({"transactions": out})
